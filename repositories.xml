@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <repositories version="1.0">
     <repo priority="50" quality="experimental" status="unofficial">
-        <name>jarodiv</name>
+        <name>jarodiv-overlay</name>
         <description lang="en">Unofficial portage overlay for Gentoo Linux providing ebuilds for some unsupported packages</description>
         <homepage>https://github.com/Jarodiv/jarodiv-overlay</homepage>
         <owner>
