@@ -1,0 +1,22 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index a97cfbc..1d97381 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,6 +1,8 @@
+ cmake_minimum_required(VERSION 3.8)
+ project(oaknut LANGUAGES CXX VERSION 1.1.5)
+ 
++option(WITH_TEST "Build test" ON)
++
+ # Determine if we're built as a subproject (using add_subdirectory)
+ # or if this is the master project.
+ set(MASTER_PROJECT OFF)
+@@ -40,7 +42,7 @@ target_include_directories(oaknut INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SO
+ target_compile_features(oaknut INTERFACE cxx_std_20)
+ 
+ # Tests
+-if (MASTER_PROJECT)
++if (MASTER_PROJECT AND WITH_TEST)
+     option(OAKNUT_USE_BUNDLED_CATCH "Use the embedded Catch2 submodule" OFF)
+     if (OAKNUT_USE_BUNDLED_CATCH)
+         add_subdirectory(externals/catch)

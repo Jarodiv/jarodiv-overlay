@@ -1,0 +1,32 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 12739f0d..31f1ca64 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -15,6 +15,7 @@ endif()
+ # Dynarmic project options
+ option(DYNARMIC_ENABLE_CPU_FEATURE_DETECTION "Turning this off causes dynarmic to assume the host CPU doesn't support anything later than SSE3" ON)
+ option(DYNARMIC_ENABLE_NO_EXECUTE_SUPPORT "Enables support for systems that require W^X" OFF)
++option(DYNARMIC_SKIP_EXTERNALS "Do not use bundled dependencies" OFF)
+ option(DYNARMIC_FATAL_ERRORS "Errors are fatal" OFF)
+ option(DYNARMIC_IGNORE_ASSERTS "Ignore asserts" OFF)
+ option(DYNARMIC_TESTS "Build tests" ${BUILD_TESTING})
+@@ -150,8 +151,17 @@ if (DYNARMIC_TESTS)
+     endif()
+ endif()
+ 
+-# Pull in externals CMakeLists for libs where available
+-add_subdirectory(externals)
++if (NOT DYNARMIC_SKIP_EXTERNALS)
++  # Pull in externals CMakeLists for libs where available
++  add_subdirectory(externals)
++else (NOT DYNARMIC_SKIP_EXTERNALS)
++  find_package(fmt 6.0 CONFIG REQUIRED)
++  message(STATUS "Using shared fmt ${fmt_VERSION}")
++
++  add_library(xbyak INTERFACE)
++  target_include_directories(xbyak SYSTEM INTERFACE /usr/include/xbyak)
++  target_compile_definitions(xbyak INTERFACE XBYAK_NO_OP_NAMES)
++endif (NOT DYNARMIC_SKIP_EXTERNALS)
+ 
+ # Dynarmic project files
+ add_subdirectory(src/dynarmic)
