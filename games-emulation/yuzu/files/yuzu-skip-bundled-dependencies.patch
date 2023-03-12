@@ -1,5 +1,5 @@
 diff --git a/externals/CMakeLists.txt b/externals/CMakeLists.txt
-index 8532fd7a8a..46d4fe8902 100644
+index f2a560f04..f671f03ed 100644
 --- a/externals/CMakeLists.txt
 +++ b/externals/CMakeLists.txt
 @@ -28,15 +28,6 @@ endif()
@@ -48,22 +48,22 @@ index 8532fd7a8a..46d4fe8902 100644
 -
  # httplib
  if (ENABLE_WEB_SERVICE AND NOT TARGET httplib::httplib)
-     if (NOT WIN32)
+     set(HTTPLIB_REQUIRE_OPENSSL ON)
 diff --git a/src/core/CMakeLists.txt b/src/core/CMakeLists.txt
-index 8ef1fcaa88..fc022b4096 100644
+index 4a1a8bb43..588cf7170 100644
 --- a/src/core/CMakeLists.txt
 +++ b/src/core/CMakeLists.txt
-@@ -846,7 +846,7 @@ endif()
+@@ -834,7 +834,7 @@ endif()
  create_target_directory_groups(core)
  
  target_link_libraries(core PUBLIC common PRIVATE audio_core network video_core)
--target_link_libraries(core PUBLIC Boost::boost PRIVATE fmt::fmt nlohmann_json::nlohmann_json mbedtls Opus::opus)
-+target_link_libraries(core PUBLIC Boost::boost PRIVATE fmt::fmt nlohmann_json::nlohmann_json mbedtls mbedcrypto mbedx509 Opus::opus)
+-target_link_libraries(core PUBLIC Boost::headers PRIVATE fmt::fmt nlohmann_json::nlohmann_json mbedtls Opus::opus)
++target_link_libraries(core PUBLIC Boost::headers PRIVATE fmt::fmt nlohmann_json::nlohmann_json mbedtls mbedcrypto mbedx509 Opus::opus)
  if (MINGW)
      target_link_libraries(core PRIVATE ${MSWSOCK_LIBRARY})
  endif()
 diff --git a/src/dedicated_room/CMakeLists.txt b/src/dedicated_room/CMakeLists.txt
-index 136109a0c8..6a6924ca0b 100644
+index 136109a0c..6a6924ca0 100644
 --- a/src/dedicated_room/CMakeLists.txt
 +++ b/src/dedicated_room/CMakeLists.txt
 @@ -15,7 +15,7 @@ if (ENABLE_WEB_SERVICE)
@@ -76,7 +76,7 @@ index 136109a0c8..6a6924ca0b 100644
      target_link_libraries(yuzu-room PRIVATE getopt)
  endif()
 diff --git a/src/network/network.cpp b/src/network/network.cpp
-index 6652a186bb..8513d527bc 100644
+index 6652a186b..8513d527b 100644
 --- a/src/network/network.cpp
 +++ b/src/network/network.cpp
 @@ -3,7 +3,7 @@
@@ -89,15 +89,16 @@ index 6652a186bb..8513d527bc 100644
  
  namespace Network {
 diff --git a/src/yuzu_cmd/CMakeLists.txt b/src/yuzu_cmd/CMakeLists.txt
-index 46eddf423f..434528eb7f 100644
+index 46eddf423..c08b9f7fa 100644
 --- a/src/yuzu_cmd/CMakeLists.txt
 +++ b/src/yuzu_cmd/CMakeLists.txt
-@@ -1,5 +1,8 @@
+@@ -1,6 +1,9 @@
  # SPDX-FileCopyrightText: 2018 yuzu Emulator Project
  # SPDX-License-Identifier: GPL-2.0-or-later
-+ 
+ 
 +find_package(PkgConfig REQUIRED)
 +pkg_check_modules(INIH REQUIRED INIReader)
- 
++
  # Credits to Samantas5855 and others for this function.
  function(create_resource file output filename)
+     # Read hex data from file
