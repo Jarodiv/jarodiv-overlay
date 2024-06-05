@@ -6,13 +6,13 @@ Gentoo Overlay containing packages I have been unable to find in Portage Overlay
 
 There generally are two methods to install this overlay.
 
-### Layman
+### eselect
 
-To install this overlay using `app-portage/layman`, run the following command
+To install this overlay using `app-eselect/eselect-repository`, run the following command
 
-`layman -o https://raw.githubusercontent.com/Jarodiv/jarodiv-overlay/master/repositories.xml -f -a jarodiv-overlay`
+`eselect repository add jarodiv-overlay git https://github.com/Jarodiv/jarodiv-overlay.git`
 
-More information on this can be found in the [Gentoo Wiki](https://wiki.gentoo.org/wiki/Layman#Adding_custom_repositories).
+More information on this can be found in the [Gentoo Wiki](https://wiki.gentoo.org/wiki/Eselect/Repository#Add_repositories).
 
 ### Local repositories
 
