@@ -5,11 +5,11 @@ EAPI=8
 
 inherit linux-info linux-mod
 
-COMMIT="43fe2ede21f2b4db714281cba33327cc0969fcbc"
+COMMIT="c01259932bfdee01e871b1468d4e75153fef1a12"
 
 DESCRIPTION="Linux kernel driver for rtl8812au USB WiFi chipsets"
-HOMEPAGE="https://github.com/morrownr/8812au-20210629"
-SRC_URI="https://github.com/morrownr/8812au-20210629/archive/${COMMIT}.tar.gz -> ${P}.tar.gz"
+HOMEPAGE="https://github.com/morrownr/8812au-20210820"
+SRC_URI="https://github.com/morrownr/8812au-20210820/archive/${COMMIT}.tar.gz -> ${P}.tar.gz"
 
 LICENSE="GPL-2"
 SLOT="0"
@@ -20,23 +20,22 @@ BUILD_TARGETS="all"
 DEPEND="!!net-wireless/rtl8812au_astsam
         !!net-wireless/rtl8812au_aircrack-ng"
 
-S="${WORKDIR}/8812au-20210629-${COMMIT}"
+S="${WORKDIR}/8812au-20210820-${COMMIT}"
 
 pkg_setup() {
-    linux-mod_pkg_setup
-    #compile against selected (not running) target
-    ##BUILD_PARAMS="KVER=${KV_FULL} KSRC=${KERNEL_DIR}"
+        linux-mod_pkg_setup
+        #compile against selected (not running) target
 	BUILD_PARAMS="KERN_DIR=${KV_DIR} KSRC=${KV_DIR} KERN_VER=${KV_FULL} O=${KV_OUT_DIR} V=1 KBUILD_VERBOSE=1 -Wno-error="
 }
 
 src_compile(){
-	linux-mod_src_compile
+        linux-mod_src_compile
 }
 
 src_install() {
-	linux-mod_src_install
+        linux-mod_src_install
 }
 
 pkg_postinst() {
-	linux-mod_pkg_postinst
+        linux-mod_pkg_postinst
 }
