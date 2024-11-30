@@ -9,7 +9,7 @@ inherit autotools
 
 DESCRIPTION="Generic Online Banking Interface"
 HOMEPAGE="https://www.aquamaniac.de/sites/aqbanking/index.php"
-SRC_URI="https://github.com/aqbanking/aqbanking/archive/refs/tags/${MY_PV}.tar.gz"
+SRC_URI="https://www.aquamaniac.de/rdm/attachments/526/aqbanking-${MY_PV}.tar.gz"
 
 LICENSE="GPL-2"
 SLOT="0"
@@ -27,7 +27,7 @@ DEPEND="
         >=sys-libs/gwenhywfar-5.11.2_beta:=
         virtual/libintl
         ebics? ( dev-libs/xmlsec:=[gcrypt] )
-        ofx? ( >=dev-libs/libofx-0.9.5:= )sys-libs/gwenhywfar
+        ofx? ( >=dev-libs/libofx-0.9.5:= )
 "
 RDEPEND="${DEPEND}"
 
