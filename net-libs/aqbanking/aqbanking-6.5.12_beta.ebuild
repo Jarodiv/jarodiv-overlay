@@ -9,7 +9,7 @@ inherit autotools
 
 DESCRIPTION="Generic Online Banking Interface"
 HOMEPAGE="https://www.aquamaniac.de/sites/aqbanking/index.php"
-SRC_URI="https://www.aquamaniac.de/rdm/attachments/526/aqbanking-${MY_PV}.tar.gz"
+SRC_URI="https://www.aquamaniac.de/rdm/attachments/download/526/aqbanking-${MY_PV}.tar.gz"
 
 LICENSE="GPL-2"
 SLOT="0"
