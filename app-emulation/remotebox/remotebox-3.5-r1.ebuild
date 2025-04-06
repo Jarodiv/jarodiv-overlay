@@ -28,6 +28,7 @@ REQUIRED_USE="
 
 DEPEND=">=dev-lang/perl-5.10
         dev-perl/Gtk3
+        dev-perl/Regexp-Common
         dev-perl/SOAP-Lite
         x11-misc/xdg-utils
         freerdp? ( net-misc/freerdp )
