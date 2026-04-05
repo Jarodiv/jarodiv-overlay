@@ -1,4 +1,4 @@
-# Copyright 1999-2024 Gentoo Authors
+# Copyright 1999-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="8"
@@ -7,7 +7,7 @@ inherit gnome2-utils meson vala xdg-utils
 
 DESCRIPTION="Task manager with Todoist support designed for GNU/Linux"
 HOMEPAGE="https://github.com/alainm23/planner"
-SRC_URI="https://github.com/alainm23/${PN}/archive/${PV}.tar.gz -> ${P}.tar.gz"
+SRC_URI="https://github.com/alainm23/${PN}/archive/v${PV}.tar.gz -> ${P}.tar.gz"
 
 LICENSE="GPL-3"
 SLOT="0"
@@ -20,7 +20,7 @@ DEPEND=">=dev-lang/vala-0.56.13
         >=dev-libs/libical-3.0.20[glib,vala]
         >=dev-libs/libportal-0.6[gtk,vala]
         >=dev-util/intltool-0.51.0
-        >=gnome-extra/evolution-data-server-3.56.1[vala]
+        >=gnome-extra/evolution-data-server-3.58.0[vala]
         >=gui-libs/libadwaita-1.7.0
         dev-db/sqlite:3
         dev-libs/glib
