@@ -7,6 +7,7 @@ DESCRIPTION="Open source tool to calculate the overall performance of an investm
 HOMEPAGE="https://www.portfolio-performance.info/ https://github.com/portfolio-performance/portfolio"
 
 SRC_URI="https://github.com/portfolio-performance/portfolio/releases/download/${PV}/PortfolioPerformance-${PV}-linux.gtk.x86_64.tar.gz -> ${P}.tar.gz"
+https://github.com/portfolio-performance/portfolio/archive/refs/tags/0.81.4.tar.gz
 
 LICENSE="EPL-1.0"
 SLOT="0"
