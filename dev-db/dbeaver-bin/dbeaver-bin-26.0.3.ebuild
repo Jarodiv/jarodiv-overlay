@@ -1,4 +1,4 @@
-# Copyright 2019-2024 Gentoo Authors
+# Copyright 2019-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=8
@@ -9,14 +9,14 @@ inherit desktop wrapper xdg
 
 DESCRIPTION="Free universal database tool (community edition)."
 HOMEPAGE="https://dbeaver.io/"
-SRC_URI="https://dbeaver.io/files/${PV}/${MY_PN}-ce-${PV}-linux.gtk.x86_64-nojdk.tar.gz -> ${P}-amd64.tar.gz"
+SRC_URI="https://dbeaver.io/files/${PV}/${MY_PN}-ce-${PV}-linux-x86_64.tar.gz -> ${P}-amd64.tar.gz"
 
 LICENSE="Apache-2.0 EPL-1.0 BSD"
 SLOT="0"
 KEYWORDS="~amd64"
 IUSE=""
 
-DEPEND="dev-java/openjdk-bin:17"
+DEPEND=""
 RDEPEND="${DEPEND}"
 
 S="${WORKDIR}/${MY_PN}"
