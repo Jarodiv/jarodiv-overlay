@@ -17,6 +17,7 @@ IUSE=""
 DEPEND=">=dev-lang/vala-0.56.13
         >=dev-libs/granite-7.2.0
         >=dev-libs/gxml-0.20.4
+        >=dev-libs/icu-76.1
         >=dev-libs/libical-3.0.20[glib,vala]
         >=dev-libs/libportal-0.6[gtk,vala]
         >=dev-util/intltool-0.51.0
