@@ -16,24 +16,25 @@ IUSE="debug"
 RESTRICT="mirror"
 
 BDEPEND=">=dev-build/cmake-3.22"
-DEPEND=">=app-arch/libarchive-3.8.4
+DEPEND=">=app-arch/libarchive-3.8.6
         >=app-arch/xz-utils-5.8.2
         >=app-arch/zstd-1.5.7
-        >=net-libs/nghttp2-1.68.0
-        >=net-misc/curl-8.17.0
+        >=dev-libs/libusb-1.0.29
+        >=net-libs/nghttp2-1.68.1
+        >=net-misc/curl-8.19.0
+        >=sys-libs/zlib-1.3.2
         dev-qt/qtbase:6[concurrent,gui,widgets,xml]
         dev-qt/qtdeclarative:6
         dev-qt/qtsvg:6
         net-libs/gnutls
         sys-fs/udisks:2
-        sys-libs/zlib
 "
 RDEPEND="${DEPEND}"
 
 CMAKE_USE_DIR="${S}/src"
 
 PATCHES=(
-        "${FILESDIR}/use-system-dependencies-2.0.0.patch"
+        "${FILESDIR}/use-system-dependencies-2.0.7.patch"
 )
 
 src_configure() {
