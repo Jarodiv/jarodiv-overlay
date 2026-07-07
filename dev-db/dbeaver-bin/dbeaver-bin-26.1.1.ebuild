@@ -58,7 +58,8 @@ src_install() {
         \) -exec rm -rf {} + || die
 
         fperms 0755 "/opt/${MY_PN}-ce/${MY_PN}"
-        
+        fperms 0755 "/opt/${MY_PN}-ce/jre/bin/java"
+
         make_wrapper "${MY_PN}" "/opt/${MY_PN}-ce/${MY_PN}" "/opt/${MY_PN}-ce"
-        sed -e "s:^exec /opt/${MY_PN}-ce/${MY_PN}:exec /opt/${MY_PN}-ce/${MY_PN} -vm ${EPREFIX}/opt/openjdk-bin-17/bin:" -i "${D}/usr/bin/${MY_PN}" || die
+        sed -e "s:^exec /opt/${MY_PN}-ce/${MY_PN}:exec /opt/${MY_PN}-ce/${MY_PN} -vm /opt/${MY_PN}-ce/jre/bin:" -i "${D}/usr/bin/${MY_PN}" || die
 }
