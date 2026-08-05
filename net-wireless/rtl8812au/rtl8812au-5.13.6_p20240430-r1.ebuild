@@ -1,9 +1,9 @@
-# Copyright 1999-2024 Gentoo Authors
+# Copyright 1999-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=8
 
-inherit linux-info linux-mod
+inherit linux-info linux-mod-r1
 
 COMMIT="cbe2fd6682c6eca5e8b527ddc0c1bede282b637a"
 
