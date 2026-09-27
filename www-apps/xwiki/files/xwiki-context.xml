@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+      docBase points at the "current" symlink managed by xwiki-deploy, so Portage installing/updating the payload never changes what Tomcat has deployed.
+      For deployment, the service needs to be stopped first, then the symlink can be updated.
+-->
+<Context docBase="/var/lib/xwiki/deployments/current"
+         reloadable="false"
+         crossContext="false">
+   <!-- Increase Tomcat WebResourceCache for XWiki's large number of JARs -->
+   <!-- allowLinking is required because the PostgreSQL JDBC driver is installed as a symlink (see xwiki ebuild src_install) -->
+   <Resources cacheMaxSize="128000" allowLinking="true" />
+</Context>

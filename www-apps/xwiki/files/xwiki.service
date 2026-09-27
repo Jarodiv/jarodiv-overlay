@@ -1,0 +1,18 @@
+[Unit]
+Description=XWiki on Tomcat
+After=network.target
+
+[Service]
+Type=simple
+User=xwiki
+Group=xwiki
+Environment=CATALINA_BASE=/var/lib/tomcat-11-xwiki
+Environment=CATALINA_HOME=/usr/share/tomcat-11
+EnvironmentFile=-/etc/xwiki/xwiki.env
+ExecStart=/usr/share/tomcat-11/bin/catalina.sh run
+ExecStop=/usr/share/tomcat-11/bin/catalina.sh stop
+SuccessExitStatus=143
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

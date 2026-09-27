@@ -1,0 +1,391 @@
+#!/bin/bash
+# Copyright 1999-2026 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+# ============================================================================
+#
+# This script manages minimal-downtime deployments of XWiki. It expects a
+# fresh exploded WAR (the "payload") in "${PAYLOAD_ROOT}/<PVR>" and a server
+# serving from "${DEPLOY_ROOT}/current".
+#
+# The core idea is a "double-swap" deployment model:
+#
+#   1. The script copies the payload into an isolated, versioned directory
+#      "${DEPLOY_ROOT}/<deployment_id>" (the "runtime tree").
+#   2. A symlink "${DEPLOY_ROOT}/current" -> "<deployment_id>" is
+#      atomically swapped so the server picks up the new tree on restart.
+#   3. The old runtime tree is retired only after the swap succeeds.
+#
+# The script supports two sub-commands:
+#   status  - reports installed version, active deployment, and whether an
+#             update is pending.
+#   update  - performs the full staged-copy -> stop -> swap -> start cycle.
+#
+# ============================================================================
+
+set -Eeuo pipefail
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+# System user and group that owns the deployment directories and files.
+readonly XWIKI_USER="xwiki"
+readonly XWIKI_GROUP="xwiki"
+
+# Directory where the protected configuration files live.
+readonly CONF_ROOT="/etc/xwiki"
+
+# Root directory holding all deployed runtime trees and the "current" symlink.
+readonly DEPLOY_ROOT="/var/lib/xwiki/deployments"
+
+# Directory where Portage installs the exploded XWiki WAR payload.
+readonly PAYLOAD_ROOT="/usr/share/xwiki"
+
+# Service unit name (works for both systemd and OpenRC).
+readonly SERVICE_NAME="xwiki"
+
+# File used for flock-based mutual exclusion and as the file descriptor target.
+readonly LOCK_FILE="${DEPLOY_ROOT}/.lock"
+
+# Base character class for the PVR portion of a deployment ID.
+readonly DEPLOYMENT_ID_PVR_PART='[0-9][A-Za-z0-9._+-]*'
+
+# Regex pattern for full deployment ID validation (e.g., 18.7.0-r1-20260903123806).
+readonly DEPLOYMENT_ID_REGEX="^${DEPLOYMENT_ID_PVR_PART}-[0-9]{14}$"
+
+# ---------------------------------------------------------------------------
+# Global state
+# ---------------------------------------------------------------------------
+
+# When set to 1, forces a deployment even if the current PVR matches the active
+# deployment (used by the --force flag).
+force=0
+
+# Path to a staging directory that should be cleaned up on abnormal exit.
+# Set by cmd_update before creating a temp staging dir; cleared after mv.
+cleanup_path=""
+
+# ---------------------------------------------------------------------------
+# Cleanup & error handling
+# ---------------------------------------------------------------------------
+
+# Remove the staging directory on any exit, signal, or error.
+# This prevents orphaned temp trees from accumulating under DEPLOY_ROOT.
+cleanup() {
+  if [[ -n ${cleanup_path} && -d ${cleanup_path} ]]; then
+    rm --force --one-file-system --recursive -- "${cleanup_path}"
+    cleanup_path=""
+  fi
+}
+trap cleanup EXIT HUP INT TERM
+
+# Print an error message prefixed with the script name and exit non-zero.
+die() {
+  echo "xwiki-deploy: $*" >&2
+  exit 1
+}
+
+# ---------------------------------------------------------------------------
+# Privilege checks
+# ---------------------------------------------------------------------------
+
+# Both sub-commands require root because they manipulate system directories,
+# change ownership, and control the service manager.
+require_root() {
+  [[ ${EUID} -eq 0 ]] || die "this operation must be run as root"
+}
+
+# ---------------------------------------------------------------------------
+# Deployment layout initialization
+# ---------------------------------------------------------------------------
+
+# Ensure DEPLOY_ROOT exists with correct ownership and permissions, and that
+# it is a real directory (not a symlink, which would be a security risk).
+ensure_layout() {
+  [[ ! -L ${DEPLOY_ROOT} ]] || die "${DEPLOY_ROOT} must not be a symlink"
+
+  install --directory --owner root --group ${XWIKI_GROUP} --mode 0750 "${DEPLOY_ROOT}"
+  touch "${LOCK_FILE}"
+  chown root:${XWIKI_GROUP} "${LOCK_FILE}"
+  chmod 0640 "${LOCK_FILE}"
+}
+
+# ---------------------------------------------------------------------------
+# Concurrency control
+# ---------------------------------------------------------------------------
+
+# Acquire an exclusive file lock so that only one instance of this script
+# runs at a time. This prevents race conditions during the stop->swap->start
+# cycle, which could otherwise leave the "current" symlink pointing to a
+# partially staged or removed tree.
+lock_exclusive() {
+  exec 9>"${LOCK_FILE}"
+  flock --exclusive 9
+}
+
+# ---------------------------------------------------------------------------
+# Version & deployment identification
+# ---------------------------------------------------------------------------
+
+# Query Portage for the currently installed XWiki package version (PVR).
+# The PVR is the canonical source of truth for what payload exists on disk.
+installed_pvr() {
+  local cpv
+  cpv=$(portageq best_version / www-apps/xwiki) || die "cannot query Portage for www-apps/xwiki"
+
+  [[ ${cpv} =~ ^www-apps/xwiki-(.+)$ ]] || die "invalid Portage version query result: ${cpv}"
+  printf '%s\n' "${BASH_REMATCH[1]}"
+}
+
+# Read the "current" symlink target to learn which deployment is active.
+# Returns an empty string if no deployment has been activated yet.
+active_deployment() {
+  local current_link="${DEPLOY_ROOT}/current"
+
+  if [[ -L ${current_link} ]]; then
+    readlink -- "${current_link}" 2>/dev/null || true
+  else
+    true
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Service management (systemd / OpenRC auto detection)
+# ---------------------------------------------------------------------------
+
+# Detect which init system is actually running.
+service_manager() {
+  if [[ -d /run/systemd/system ]] && command -v systemctl >/dev/null 2>&1; then
+    printf '%s\n' systemd
+  elif command -v rc-service >/dev/null 2>&1; then
+    printf '%s\n' openrc
+  else
+    die "neither systemd nor OpenRC service management is available"
+  fi
+}
+
+# Check whether the XWiki service is currently running.
+service_running() {
+  case $(service_manager) in
+    systemd) systemctl is-active --quiet "${SERVICE_NAME}.service" ;;
+    openrc) rc-service "${SERVICE_NAME}" status >/dev/null 2>&1 ;;
+  esac
+}
+
+# Stop the service and verify it has fully stopped before returning.
+service_stop() {
+  case $(service_manager) in
+    systemd)
+      systemctl stop "${SERVICE_NAME}.service" || die "failed to stop ${SERVICE_NAME} service"
+      if systemctl is-active --quiet "${SERVICE_NAME}.service"; then
+        die "${SERVICE_NAME} is still active after stop"
+      fi
+      ;;
+    openrc)
+      rc-service "${SERVICE_NAME}" stop || die "failed to stop ${SERVICE_NAME} service"
+      if rc-service "${SERVICE_NAME}" status >/dev/null 2>&1; then
+        die "${SERVICE_NAME} service is still active after stop"
+      fi
+      ;;
+  esac
+}
+
+# Start the XWiki service.
+service_start() {
+  case $(service_manager) in
+    systemd) systemctl start "${SERVICE_NAME}.service" || die "failed to start ${SERVICE_NAME} service" ;;
+    openrc) rc-service "${SERVICE_NAME}" start || die "failed to start ${SERVICE_NAME} service" ;;
+  esac
+}
+
+# ---------------------------------------------------------------------------
+# Deployment ID validation & generation
+# ---------------------------------------------------------------------------
+
+# Check if the provided pattern fits the standard deployment ID format.
+valid_id() {
+  [[ $1 =~ ${DEPLOYMENT_ID_REGEX} ]]
+}
+
+# Extract the PVR portion from a string that may be either a PVR (e.g., "18.7.0-r1")
+# or a deployment ID (e.g., "18.7.0-r1-20260903123806").
+extract_pvr() {
+  if [[ $1 =~ ${DEPLOYMENT_ID_REGEX} ]]; then
+    printf '%s\n' "${1:0:-15}"
+  else
+    printf '%s\n' "$1"
+  fi
+}
+
+# Compare two strings (PVR or deployment ID) and return true (exit 0) if their PVR
+# portions are identical, ignoring any timestamp suffix.
+#
+# Examples:
+#   same_pvr "18.7.0-r1" "18.7.0-r1-20260903123806"  -> 0 (true)
+#   same_pvr "18.7.0" "18.7.0-20260903123806"        -> 0 (true)
+#   same_pvr "18.7.0-r1" "18.6.0-r1-20260903123806"  -> 1 (false)
+same_pvr() {
+  local pvr1 pvr2
+  pvr1=$(extract_pvr "$1")
+  pvr2=$(extract_pvr "$2")
+  [[ ${pvr1} == ${pvr2} ]]
+}
+
+# Generate a unique deployment ID for a given payload.
+#
+# The ID encodes: <PVR>-<YYYYMMDDHHMMSS>
+#
+# Using the current date and time (to the second) ensures that each
+# invocation of xwiki-deploy update produces a fresh, unique deployment
+# ID, triggering a new deployment rather than a no-op "already current".
+generate_deployment_id() {
+  local pvr=$1
+  printf '%s-%s\n' "${pvr}" "$(date +%Y%m%d%H%M%S)"
+}
+
+# ---------------------------------------------------------------------------
+# Sub-command: status
+# ---------------------------------------------------------------------------
+
+# Display the current deployment state without making any changes.
+cmd_status() {
+  require_root
+  ensure_layout
+  lock_exclusive
+
+  local installed active
+  installed=$(installed_pvr)
+  active=$(active_deployment)
+
+  echo "Installed by Portage: ${installed}"
+  echo "Active deployment:    ${active:-none}"
+
+  if same_pvr "${installed}" "${active}"; then
+    echo "Update pending:       no"
+  else
+    echo "Update pending:       yes"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Sub-command: update
+# ---------------------------------------------------------------------------
+
+# Perform a full staged deployment:
+#
+#   Phase 1 - Verification
+#   Phase 2 - Preparation
+#   Phase 3 - Activation
+#
+# The old tree is retired only after the new one is confirmed active, so
+# rollback is always possible by pointing "current" back to the old directory.
+cmd_update() {
+  require_root
+  ensure_layout
+  lock_exclusive
+
+  # Phase 1 - Verify the payload exists and is well-formed.
+  local installed active deployment_id stage running=0
+  installed=$(installed_pvr)
+  active=$(active_deployment)
+  deployment_id=$(generate_deployment_id "${installed}")
+
+  valid_id "${deployment_id}" || die "invalid generated deployment ID: ${deployment_id}"
+  [[ -z ${active} ]] || valid_id "${active}" || die "invalid active deployment ID: ${active}"
+
+  local payload_dir="${PAYLOAD_ROOT}/${installed}"
+  [[ -d ${payload_dir} ]] || die "missing Portage payload at ${payload_dir}"
+
+  # Phase 1 - Already up to date, so skip the entire cycle (unless --force).
+  if same_pvr "${deployment_id}" "${active}" && (( ! force )); then
+    echo "XWiki runtime is already current: ${deployment_id}"
+    return 0
+  fi
+
+  # Phase 2 - Create a hidden staging directory and register it for cleanup on failure.
+  stage="${DEPLOY_ROOT}/.${deployment_id}.new"
+  rm --force --recursive -- "${stage}" 2>/dev/null || true
+  install --directory --group ${XWIKI_GROUP} --mode 0750 --owner root "${stage}"
+  cleanup_path="${stage}"
+
+  # Phase 2 - Copy the exploded payload while preserving its absolute symlinks.
+  cp --archive --no-dereference -- "${payload_dir}"/. "${stage}/" || die "failed to copy payload"
+
+  # Phase 2 - Replace payload links with regular, deployment-local configuration files.
+	# (preventing changes for a new deployment affecting the current deployment)
+  rm --force -- "${stage}/WEB-INF/hibernate.cfg.xml" || die "failed to remove staged hibernate.cfg.xml link"
+  cp --dereference -- "${CONF_ROOT}/hibernate.cfg.xml" "${stage}/WEB-INF/hibernate.cfg.xml" || die "failed to copy hibernate.cfg.xml"
+  rm --force -- "${stage}/WEB-INF/xwiki.properties" || die "failed to remove staged xwiki.properties link"
+  cp --dereference -- "${CONF_ROOT}/xwiki.properties" "${stage}/WEB-INF/xwiki.properties" || die "failed to copy xwiki.properties"
+
+  # Phase 2 - Set ownership and permissions.
+  chown --recursive root:${XWIKI_GROUP} "${stage}" || die "failed to set ownership"
+  find "${stage}" -type d -exec chmod 0750 {} + || die "failed to set directory permissions"
+  find "${stage}" -type f -exec chmod 0640 {} + || die "failed to set file permissions"
+
+  # Phase 2 - Atomically publish the staged copy in DEPLOY_ROOT.
+	# (it is not yet active, the "current" symlink still points elsewhere)
+  mv -- "${stage}" "${DEPLOY_ROOT}/${deployment_id}" || die "failed to publish deployment"
+  cleanup_path=""
+
+  # Phase 3 - Stop the service if running.
+  if service_running; then
+    running=1
+    echo "Stopping XWiki service..."
+    service_stop
+  fi
+
+  # Phase 3 - Atomically swap the "current" symlink.
+  local tmp_link="${DEPLOY_ROOT}/.current.new.$$"
+  ln --force --no-dereference --symbolic -- "${deployment_id}" "${tmp_link}" || die "failed to create temporary symlink"
+  mv --force --no-target-directory -- "${tmp_link}" "${DEPLOY_ROOT}/current" || die "failed to activate new deployment"
+
+  # Phase 3 - Retire the previously active tree.
+  if [[ -n ${active} && ${active} != "${deployment_id}" ]]; then
+    echo "Removing old runtime deployment: ${active}"
+    rm --force --recursive -- "${DEPLOY_ROOT:?}/${active}" || die "failed to remove old runtime deployment"
+  fi
+
+  # Phase 3 - Restart service if it was running before the update.
+  if (( running )); then
+    echo "Starting XWiki service..."
+    service_start
+  fi
+
+  echo "XWiki deployment activated: ${deployment_id}"
+}
+
+# ---------------------------------------------------------------------------
+# Entry point - dispatch sub-commands
+# ---------------------------------------------------------------------------
+
+# Parse global flags before the sub-command.
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --force)
+      force=1
+      shift
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+case ${1:-} in
+  status)
+    shift
+    if (( force )); then
+      die 'usage: xwiki-deploy [--force] {status|update}\n--force is not supported with status'
+    fi
+    cmd_status
+    ;;
+  update)
+    shift
+    cmd_update
+    ;;
+  *)
+    die 'usage: xwiki-deploy [--force] {status|update}'
+    ;;
+esac

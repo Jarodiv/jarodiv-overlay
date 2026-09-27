@@ -1,0 +1,21 @@
+#!/sbin/openrc-run
+
+name="XWiki"
+description="XWiki on Tomcat"
+
+export CATALINA_BASE=/var/lib/tomcat-11-xwiki
+export CATALINA_HOME=/usr/share/tomcat-11
+
+if [ -r /etc/xwiki/xwiki.env ]; then
+	. /etc/xwiki/xwiki.env
+fi
+export JAVA_OPTS CATALINA_OPTS
+
+command="${CATALINA_HOME}/bin/catalina.sh"
+command_args="run"
+command_user="xwiki:xwiki"
+command_background="yes"
+
+start_pre() {
+	checkpath --directory --owner xwiki:xwiki --mode 0750 /var/lib/xwiki/data
+}
