@@ -1,4 +1,4 @@
-# Copyright 1999-2025 Gentoo Authors
+# Copyright 1999-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="8"
@@ -15,8 +15,10 @@ KEYWORDS="~amd64 ~arm64 ~x86 ~amd64-linux ~x86-linux"
 IUSE=""
 
 DEPEND=">=dev-lang/vala-0.56.13
+        >=dev-libs/chrono-1.0.0
         >=dev-libs/granite-7.2.0
         >=dev-libs/gxml-0.20.4
+        >=dev-libs/icu-76.1
         >=dev-libs/libical-3.0.20[glib,vala]
         >=dev-libs/libportal-0.6[gtk,vala]
         >=dev-util/intltool-0.51.0
@@ -48,11 +50,13 @@ src_install() {
 }
 
 pkg_postinst() {
-        gnome2_schemas_update
-        xdg_icon_cache_update
+	gnome2_schemas_update
+	xdg_icon_cache_update
+	xdg_desktop_database_update
 }
 
 pkg_postrm() {
-        gnome2_schemas_update
-        xdg_icon_cache_update
+	gnome2_schemas_update
+	xdg_icon_cache_update
+	xdg_desktop_database_update
 }
