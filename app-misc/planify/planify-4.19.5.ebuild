@@ -15,7 +15,6 @@ KEYWORDS="~amd64 ~arm64 ~x86 ~amd64-linux ~x86-linux"
 IUSE=""
 
 DEPEND=">=dev-lang/vala-0.56.13
-        >=dev-libs/chrono-1.0.0
         >=dev-libs/granite-7.2.0
         >=dev-libs/gxml-0.20.4
         >=dev-libs/icu-76.1
