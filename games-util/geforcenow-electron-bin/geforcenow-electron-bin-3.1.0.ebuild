@@ -9,7 +9,7 @@ inherit xdg
 
 DESCRIPTION="Linux desktop client for GeForce NOW, using Electron"
 HOMEPAGE="https://github.com/hmlendea/gfn-electron"
-SRC_URI="https://github.com/hmlendea/gfn-electron/releases/download/v${PV}/${MY_PN}_${PV}_linux.zip"
+SRC_URI="https://github.com/hmlendea/gfn-electron/releases/download/v${PV}/${MY_PN}_${PV}_linux_x64.zip"
 
 LICENSE="GPL-3"
 SLOT="0"
