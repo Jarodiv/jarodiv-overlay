@@ -1,0 +1,30 @@
+diff --git a/core/app_paths.py b/core/app_paths.py
+index 7227dd6..3cf9140 100644
+--- a/core/app_paths.py
++++ b/core/app_paths.py
+@@ -19,7 +19,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
+ 
+ 
+ def base_dir() -> Path:
+-    return _shared.base_dir(PROJECT_ROOT)
++    # In a system install (/usr/share/videoredactor), writable runtime files
++    # must not go into PROJECT_ROOT. Keep settings/logs in the per-user
++    # config dir (~/.config/videoredactor on Linux).
++    return _shared.user_config_dir(APP_SLUG)
+ 
+ 
+ def tools_dir() -> Path:
+@@ -31,11 +34,11 @@ def asset_path(relative: str) -> Path:
+ 
+ 
+ def settings_ini_path() -> Path:
+-    return _shared.settings_ini_path(APP_SLUG, PROJECT_ROOT)
++    return base_dir() / f"{APP_SLUG}_settings.ini"
+ 
+ 
+ def crash_log_path() -> Path:
+-    return _shared.crash_log_path(APP_SLUG, PROJECT_ROOT)
++    return base_dir() / f"{APP_SLUG}_crash.log"
+ 
+ 
+ def updates_json_path() -> Path:
