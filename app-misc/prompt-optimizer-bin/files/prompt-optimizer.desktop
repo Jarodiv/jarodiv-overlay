@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Prompt Optimizer
+Comment=Optimize prompts for large language models
+Exec=prompt-optimizer %U
+Terminal=false
+Type=Application
+Icon=prompt-optimizer
+Categories=Utility;
+StartupWMClass=PromptOptimizer
