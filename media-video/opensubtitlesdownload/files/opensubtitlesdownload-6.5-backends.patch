@@ -1,0 +1,41 @@
+diff --git a/OpenSubtitlesDownload.py b/OpenSubtitlesDownload.py
+index bcd90d4..fdf0c13 100755
+--- a/OpenSubtitlesDownload.py
++++ b/OpenSubtitlesDownload.py
+@@ -132,6 +132,10 @@
+ # - kde (KDE/Qt based environments, using 'kdialog' backend)
+ # - cli (Command Line Interface)
+ opt_gui = 'auto'
++
++# Set by the Gentoo ebuild according to USE flags
++gentoo_gnome_enabled = @GENTOO_GNOME@
++gentoo_kde_enabled = @GENTOO_KDE@
+ 
+ # Change the subtitles selection GUI size:
+ opt_gui_width  = 940
+@@ -1041,14 +1044,22 @@
+ # GUI auto detection
+ if opt_gui == 'auto':
+     # Note: "ps cax" only output the first 15 characters of the executable's names
+-    ps = str(subprocess.Popen(['ps', 'cax'], stdout=subprocess.PIPE).communicate()[0]).split('\n')
++    ps = []
++    if gentoo_gnome_enabled or gentoo_kde_enabled:
++        ps = str(subprocess.Popen(['ps', 'cax'], stdout=subprocess.PIPE).communicate()[0]).split('\n')
+     for line in ps:
+-        if ('gnome-session' in line) or ('cinnamon-sessio' in line) or ('mate-session' in line) or ('xfce4-session' in line):
++        if gentoo_gnome_enabled and (('gnome-session' in line) or ('cinnamon-sessio' in line) or ('mate-session' in line) or ('xfce4-session' in line)):
+             opt_gui = 'gnome'
+             break
+-        elif 'ksmserver' in line:
++        elif gentoo_kde_enabled and 'ksmserver' in line:
+             opt_gui = 'kde'
+             break
++
++# Reject explicit requests for backends not enabled at build time
++if opt_gui == 'gnome' and not gentoo_gnome_enabled:
++    parser.error('GNOME backend is disabled; rebuild with USE="gnome"')
++if opt_gui == 'kde' and not gentoo_kde_enabled:
++    parser.error('KDE backend is disabled; rebuild with USE="kde"')
+ 
+ # Sanitize some settings
+ if opt_gui not in ['gnome', 'kde', 'cli']:
